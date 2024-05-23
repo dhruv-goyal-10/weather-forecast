@@ -7,8 +7,9 @@ OPENWEATHERMAP_API_KEY = settings.OPENWEATHERMAP_API_KEY
 
 def get_weather_data(lat, lon, detailing_type):
     """
-    Returns the weather data for the given latitude, longitude, and detailing type.
-    If the data is not recent, it fetches the data from the OpenWeatherMap API.
+    Fetches the weather data from the database if it is recent.
+    Otherwise, fetches the data from the OpenWeatherMap API and saves it to the database.
+    Returns the success status and the data.
     """
     
     weather_data = (
@@ -23,7 +24,7 @@ def get_weather_data(lat, lon, detailing_type):
     success, api_data = fetch_data(lat, lon)
     
     if not success:
-        return None
+        return False, "An unexpected error occured"
 
     weather_data_to_save = list()
 
@@ -32,20 +33,21 @@ def get_weather_data(lat, lon, detailing_type):
     # Fetching all the data from the API and saving it to the database, 
     # regardless of the detailing type demanded by the user.
     
-    for detailing_type in possible_detailing_types:
-        data = api_data[detailing_type]
-        weather_data = WeatherData(
-            lat=lat, lon=lon, detailing_type=detailing_type, data=data
-        )
-        weather_data_to_save.append(weather_data)
+    for possible_detailing_type in possible_detailing_types:
+        if possible_detailing_type in api_data:
+            data = api_data[possible_detailing_type]
+            weather_data = WeatherData(
+                lat=lat, lon=lon, detailing_type=possible_detailing_type, data=data
+            )
+            weather_data_to_save.append(weather_data)
 
     WeatherData.objects.bulk_create(weather_data_to_save)
 
     
     # For some places the API does not return all the detailing types.
     if detailing_type in api_data:
-        return api_data[detailing_type]
-    return None
+        return True, api_data[detailing_type]
+    return False, "The detailing type is not available"
 
 def fetch_data(lat, lon) -> tuple[int, dict]:
     """

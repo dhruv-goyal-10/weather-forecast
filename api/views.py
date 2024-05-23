@@ -45,11 +45,10 @@ class WeatherDataAPIView(APIView):
                 {"success": False, "error": "Invalid detailing type"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
-        data = get_weather_data(lat, lon, detailing_type)
-        if data:
+        success, data = get_weather_data(lat, lon, detailing_type)
+        if success:
             return Response({"success": True, "data": data})
 
         return Response(
-            {"success": False, "error": "An unexpected error occured."}, status=400
+            {"success": False, "error": data}, status=400
         )
